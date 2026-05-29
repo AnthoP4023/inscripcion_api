@@ -1,30 +1,22 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import { google } from 'googleapis';
 
-const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-
-if (!privateKey) {
-  throw new Error('GOOGLE_PRIVATE_KEY no está definida');
+function getSheets() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_CLIENT_EMAIL,
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+  return google.sheets({ version: 'v4', auth });
 }
 
-const auth = new google.auth.GoogleAuth({
-  credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: privateKey.replace(/\\n/g, '\n'),
-  },
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-
-const sheets = google.sheets({ version: 'v4', auth });
-
 export const getRows = async (range = 'A:Z') => {
+  const sheets = getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range,
   });
-
   const [headers, ...rows] = res.data.values;
   return rows.map(row =>
     headers.reduce((obj, header, i) => {
@@ -35,6 +27,7 @@ export const getRows = async (range = 'A:Z') => {
 };
 
 export const appendRow = async (values, range = 'A:Z') => {
+  const sheets = getSheets();
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range,
